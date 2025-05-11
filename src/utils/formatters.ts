@@ -4,6 +4,8 @@
  * @returns String formatada como moeda (ex: R$ 1.234,56)
  */
 export const formatCurrency = (value: number): string => {
+  if (isNaN(value)) return "R$ 0,00";
+  
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
@@ -60,6 +62,8 @@ export const formatCurrencyInput = (value: string): string => {
  * @returns String formatada como percentual (ex: 12,34%)
  */
 export const formatPercent = (value: number): string => {
+  if (isNaN(value)) return "0,00%";
+  
   return new Intl.NumberFormat('pt-BR', {
     style: 'percent',
     minimumFractionDigits: 2,
@@ -73,7 +77,13 @@ export const formatPercent = (value: number): string => {
  * @returns String formatada como data (ex: 31/12/2023)
  */
 export const formatDate = (date: Date): string => {
-  return new Intl.DateTimeFormat('pt-BR').format(date);
+  if (!date || isNaN(date.getTime())) return "";
+  
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(date);
 };
 
 /**
@@ -82,6 +92,8 @@ export const formatDate = (date: Date): string => {
  * @returns String formatada como data e hora (ex: 31/12/2023 23:59)
  */
 export const formatDateTime = (date: Date): string => {
+  if (!date || isNaN(date.getTime())) return "";
+  
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
     month: '2-digit',
@@ -110,6 +122,8 @@ export const formatDateFriendly = (date: string | Date): string => {
   if (!date) return '';
   
   const dateObject = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(dateObject.getTime())) return '';
+  
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
@@ -143,7 +157,6 @@ export const getTransactionTypeColor = (type: 'entrada' | 'saída'): string => {
 /**
  * Formata o número de parcelas (ex: 3/12)
  */
-export const formatInstallment = (current?: number, total?: number): string => {
-  if (!current || !total || total <= 1) return '';
+export const formatInstallment = (current: number, total: number): string => {
   return `${current}/${total}`;
 };

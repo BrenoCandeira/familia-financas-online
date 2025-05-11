@@ -132,7 +132,7 @@ const NewTransaction = () => {
   };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '');
+    const value = e.target.value.replace(/[^0-9.,]/g, '');
     setAmount(value);
     validateAmount(value);
   };
@@ -173,7 +173,7 @@ const NewTransaction = () => {
       amount: parsedAmount,
       type,
       categoryId,
-      date: format(date, "yyyy-MM-dd"),
+      date: new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString().split('T')[0],
       description,
       accountId: paymentMethod === "account" ? accountId : undefined,
       creditCardId: paymentMethod === "creditCard" ? creditCardId : undefined,
@@ -245,7 +245,7 @@ const NewTransaction = () => {
                   <Input
                     id="amount"
                     placeholder="0,00"
-                    value={formatCurrencyInput(amount)}
+                    value={amount}
                     onChange={handleAmountChange}
                     className={`pl-10 ${errors.amount ? 'border-red-500' : 'border-gray-300'}`}
                   />

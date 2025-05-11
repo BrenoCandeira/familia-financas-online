@@ -1,40 +1,65 @@
-import { useMemo } from "react";
-import { useFinance } from "@/contexts/FinanceContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
+import { Doughnut } from "react-chartjs-2";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  Chart as ChartJS,
+  ArcElement,
   Tooltip,
-  ResponsiveContainer,
   Legend
-} from "recharts";
+} from 'chart.js';
 
-const ExpensesByCategory = () => {
-  const { transactions, categories } = useFinance();
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend
+);
 
-  const data = useMemo(() => {
-    const expenses = transactions.filter(t => t.type === "saída");
-    const categoryTotals = expenses.reduce((acc, transaction) => {
-      const category = categories.find(c => c.id === transaction.categoryId);
-      if (category) {
-        acc[category.name] = (acc[category.name] || 0) + transaction.amount;
-      }
-      return acc;
-    }, {} as Record<string, number>);
+interface ExpensesByCategoryProps {
+  transactions: any[];
+  categories: any[];
+}
 
-    return Object.entries(categoryTotals)
-      .map(([name, value]) => ({
-        name,
-        value,
-        formattedValue: formatCurrency(value)
-      }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5); // Mostra apenas as 5 maiores categorias
-  }, [transactions, categories]);
+export const ExpensesByCategory = ({ transactions, categories }: ExpensesByCategoryProps) => {
+  // Agrupar despesas por categoria
+  const categoryTotals: Record<string, number> = {};
+  transactions.filter(t => t.type === "saída").forEach(t => {
+    categoryTotals[t.categoryId] = (categoryTotals[t.categoryId] || 0) + t.amount;
+  });
+  const data = {
+    labels: Object.keys(categoryTotals).map(cid => {
+      const cat = categories.find(c => c.id === cid);
+      return cat ? cat.name : "Desconhecido";
+    }),
+    datasets: [
+      {
+        data: Object.values(categoryTotals),
+        backgroundColor: Object.keys(categoryTotals).map(cid => {
+          const cat = categories.find(c => c.id === cid);
+          return cat ? cat.color : "#888888";
+        }),
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'right' as const,
+      },
+      tooltip: {
+        callbacks: {
+          label: (context: any) => {
+            const value = context.raw;
+            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+            const percentage = ((value / total) * 100).toFixed(1);
+            return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
+          },
+        },
+      },
+    },
+  };
 
   return (
     <Card>
@@ -43,52 +68,9 @@ const ExpensesByCategory = () => {
       </CardHeader>
       <CardContent>
         <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={data}
-              margin={{
-                top: 20,
-                right: 30,
-                left: 20,
-                bottom: 60,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="name"
-                angle={-45}
-                textAnchor="end"
-                height={60}
-                interval={0}
-                tick={{ fontSize: 12 }}
-              />
-              <YAxis
-                tickFormatter={(value) => formatCurrency(value)}
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip
-                formatter={(value: number) => formatCurrency(value)}
-                labelStyle={{ color: "#000" }}
-                contentStyle={{
-                  backgroundColor: "#fff",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  padding: "8px"
-                }}
-              />
-              <Legend />
-              <Bar
-                dataKey="value"
-                name="Valor"
-                fill="#8884d8"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <Doughnut data={data} options={options} />
         </div>
       </CardContent>
     </Card>
   );
-};
-
-export default ExpensesByCategory; 
+}; 

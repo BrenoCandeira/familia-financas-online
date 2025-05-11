@@ -17,6 +17,7 @@ import Categories from "./pages/Categories";
 import Goals from "./pages/Goals";
 import NotFound from "./pages/NotFound";
 import PrivateRoute from "./components/auth/PrivateRoute";
+import EditTransaction from "./pages/EditTransaction";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
                 <Route path="/transactions/new" element={<NewTransaction />} />
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/goals" element={<Goals />} />
+                <Route path="/edit-transaction/:id" element={<EditTransaction />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />

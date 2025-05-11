@@ -134,7 +134,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // Memoização dos dados do dashboard
   const dashboardData = useMemo<DashboardData | null>(() => {
-    if (!filteredTransactions.length && !accounts.length) return null;
+    if (!transactions.length && !accounts.length) return null;
     
     const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
     
@@ -147,32 +147,47 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     
     const categoryExpensesMap = new Map<string, number>();
     
-    filteredTransactions
+    // Filtrar transações do mês atual
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    const monthlyTransactions = transactions.filter(t => {
+      const transactionDate = new Date(t.date);
+      return transactionDate >= startOfMonth && transactionDate <= endOfMonth;
+    });
+    
+    // Agrupar despesas por categoria
+    monthlyTransactions
       .filter(t => t.type === "saída")
       .forEach(transaction => {
         const currentAmount = categoryExpensesMap.get(transaction.categoryId) || 0;
         categoryExpensesMap.set(transaction.categoryId, currentAmount + transaction.amount);
       });
     
-    const categoryExpenses = Array.from(categoryExpensesMap.entries()).map(([categoryId, amount]) => {
-      const category = categories.find(c => c.id === categoryId);
-      return {
-        categoryId,
-        amount,
-        name: category?.name || "Desconhecido",
-        color: category?.color || "#888888",
-      };
-    });
+    const categoryExpenses = Array.from(categoryExpensesMap.entries())
+      .map(([categoryId, amount]) => {
+        const category = categories.find(c => c.id === categoryId);
+        return {
+          categoryId,
+          amount,
+          name: category?.name || "Desconhecido",
+          color: category?.color || "#888888",
+        };
+      })
+      .sort((a, b) => b.amount - a.amount); // Ordenar por valor decrescente
     
-    const income = filteredTransactions
+    // Calcular entradas e saídas do mês
+    const income = monthlyTransactions
       .filter(t => t.type === "entrada")
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const expense = filteredTransactions
+    const expense = monthlyTransactions
       .filter(t => t.type === "saída")
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const recentTransactions = [...filteredTransactions]
+    // Pegar as 10 transações mais recentes
+    const recentTransactions = [...transactions]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10);
     
@@ -183,12 +198,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       incomeVsExpense: { income, expense },
       recentTransactions,
     };
-  }, [filteredTransactions, accounts, categories]);
+  }, [transactions, accounts, categories]);
 
   // Função para buscar dados com tratamento de erro melhorado
   const fetchData = useCallback(async () => {
     if (!currentUser) return;
-    
     setIsLoading(true);
     try {
       const [
@@ -263,12 +277,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         color: g.color || undefined,
         icon: g.icon || undefined
       })));
-
+      console.log('FinanceContext: Dados carregados com sucesso');
     } catch (error: any) {
-      console.error(ERROR_MESSAGES.FETCH_ERROR, error);
-      toast.error(`${ERROR_MESSAGES.FETCH_ERROR}: ${error.message}`);
+      console.error('FinanceContext: Erro ao carregar dados', error);
+      toast.error(`Erro ao carregar dados financeiros: ${error.message}`);
     } finally {
       setIsLoading(false);
+      console.log('FinanceContext: isLoading =', false);
     }
   }, [currentUser]);
 

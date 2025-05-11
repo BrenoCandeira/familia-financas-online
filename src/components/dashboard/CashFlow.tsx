@@ -1,57 +1,115 @@
-import { useMemo } from "react";
-import { useFinance } from "@/contexts/FinanceContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/utils/formatters";
+import { Bar } from "react-chartjs-2";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Title,
   Tooltip,
-  ResponsiveContainer,
+  Legend,
+} from 'chart.js';
+import { formatCurrency } from "@/utils/formatters";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
   Legend
-} from "recharts";
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
-import { ptBR } from "date-fns/locale";
+);
 
-const CashFlow = () => {
-  const { transactions } = useFinance();
-
-  const data = useMemo(() => {
-    const months = Array.from({ length: 6 }, (_, i) => {
-      const date = subMonths(new Date(), i);
-      return {
-        start: startOfMonth(date),
-        end: endOfMonth(date),
-        month: format(date, "MMM/yy", { locale: ptBR })
+export const CashFlow = ({ transactions, goals }: { transactions: any[]; goals: any[] }) => {
+  // Agrupar transações por mês
+  const monthlyData = transactions.reduce((acc, transaction) => {
+    const date = new Date(transaction.date);
+    const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
+    if (!acc[monthYear]) {
+      acc[monthYear] = {
+        income: 0,
+        expense: 0,
       };
-    }).reverse();
+    }
+    if (transaction.type === "entrada") {
+      acc[monthYear].income += transaction.amount;
+    } else {
+      acc[monthYear].expense += transaction.amount;
+    }
+    return acc;
+  }, {} as Record<string, { income: number; expense: number }>);
 
-    return months.map(({ start, end, month }) => {
-      const monthTransactions = transactions.filter(
-        t => new Date(t.date) >= start && new Date(t.date) <= end
-      );
+  // Ordenar meses
+  const sortedMonths = Object.keys(monthlyData).sort((a, b) => {
+    const [monthA, yearA] = a.split('/').map(Number);
+    const [monthB, yearB] = b.split('/').map(Number);
+    return yearA === yearB ? monthA - monthB : yearA - yearB;
+  });
 
-      const income = monthTransactions
-        .filter(t => t.type === "entrada")
-        .reduce((sum, t) => sum + t.amount, 0);
+  // Metas por mês (exemplo: meta total dividida igualmente)
+  const metaMensal = goals.length > 0 ? goals.reduce((sum, g) => sum + g.targetAmount, 0) / 12 : 0;
+  const metas = sortedMonths.map(() => metaMensal);
 
-      const expenses = monthTransactions
-        .filter(t => t.type === "saída")
-        .reduce((sum, t) => sum + t.amount, 0);
+  // Preparar dados para o gráfico
+  const data = {
+    labels: sortedMonths,
+    datasets: [
+      {
+        type: 'bar' as const,
+        label: 'Entradas',
+        data: sortedMonths.map(month => monthlyData[month].income),
+        backgroundColor: 'rgba(34, 197, 94, 0.7)',
+        borderColor: 'rgb(34, 197, 94)',
+        borderWidth: 1,
+        order: 1,
+      },
+      {
+        type: 'bar' as const,
+        label: 'Saídas',
+        data: sortedMonths.map(month => monthlyData[month].expense),
+        backgroundColor: 'rgba(239, 68, 68, 0.7)',
+        borderColor: 'rgb(239, 68, 68)',
+        borderWidth: 1,
+        order: 1,
+      },
+      {
+        type: 'line' as const,
+        label: 'Meta',
+        data: metas,
+        borderColor: 'rgb(59, 130, 246)',
+        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+        borderWidth: 2,
+        fill: false,
+        pointRadius: 3,
+        tension: 0.3,
+        order: 2,
+      },
+    ],
+  } as any;
 
-      return {
-        month,
-        income,
-        expenses,
-        balance: income - expenses,
-        formattedIncome: formatCurrency(income),
-        formattedExpenses: formatCurrency(expenses),
-        formattedBalance: formatCurrency(income - expenses)
-      };
-    });
-  }, [transactions]);
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+      },
+      title: {
+        display: false,
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: (value: string | number) => formatCurrency(Number(value)),
+        },
+      },
+    },
+  };
 
   return (
     <Card>
@@ -59,70 +117,8 @@ const CashFlow = () => {
         <CardTitle>Fluxo de Caixa</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={data}
-              margin={{
-                top: 20,
-                right: 30,
-                left: 20,
-                bottom: 20,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="month"
-                tick={{ fontSize: 12 }}
-              />
-              <YAxis
-                tickFormatter={(value) => formatCurrency(value)}
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip
-                formatter={(value: number) => formatCurrency(value)}
-                labelStyle={{ color: "#000" }}
-                contentStyle={{
-                  backgroundColor: "#fff",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  padding: "8px"
-                }}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="income"
-                name="Receitas"
-                stroke="#10B981"
-                strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="expenses"
-                name="Despesas"
-                stroke="#EF4444"
-                strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="balance"
-                name="Saldo"
-                stroke="#3B82F6"
-                strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <Bar data={data} options={options} />
       </CardContent>
     </Card>
   );
-};
-
-export default CashFlow; 
+}; 

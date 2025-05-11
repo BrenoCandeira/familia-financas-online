@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, CreditCard, Search, Trash2, Plus } from "lucide-react";
+import { Calendar, CreditCard, Search, Trash2, Plus, Pencil } from "lucide-react";
 import { mockUsers } from "../data/mockData";
 
 const Transactions = () => {
@@ -33,6 +33,8 @@ const Transactions = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [selectedTransactions, setSelectedTransactions] = useState<string[]>([]);
+  const [isDeleteMultipleDialogOpen, setIsDeleteMultipleDialogOpen] = useState(false);
 
   const handleDeleteTransaction = () => {
     if (transactionToDelete) {
@@ -42,9 +44,33 @@ const Transactions = () => {
     }
   };
 
+  const handleDeleteMultipleTransactions = () => {
+    selectedTransactions.forEach(id => {
+      deleteTransaction(id);
+    });
+    setSelectedTransactions([]);
+    setIsDeleteMultipleDialogOpen(false);
+  };
+
   const openDeleteDialog = (transaction: Transaction) => {
     setTransactionToDelete(transaction);
     setIsDeleteDialogOpen(true);
+  };
+
+  const toggleTransactionSelection = (id: string) => {
+    setSelectedTransactions(prev => 
+      prev.includes(id) 
+        ? prev.filter(t => t !== id)
+        : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedTransactions.length === filteredTransactions.length) {
+      setSelectedTransactions([]);
+    } else {
+      setSelectedTransactions(filteredTransactions.map(t => t.id));
+    }
   };
 
   // Filtering logic
@@ -100,6 +126,10 @@ const Transactions = () => {
     return mockUsers.find(u => u.id === userId);
   };
 
+  const getTransactionTypeColor = (type: "entrada" | "saída") => {
+    return type === "entrada" ? "text-financial-income" : "text-financial-expense";
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -110,9 +140,20 @@ const Transactions = () => {
           </p>
         </div>
         
-        <Button onClick={() => window.location.href = "/transactions/new"}>
-          <Plus className="mr-2 h-4 w-4" /> Nova transação
-        </Button>
+        <div className="flex gap-2">
+          {selectedTransactions.length > 0 && (
+            <Button 
+              variant="destructive" 
+              onClick={() => setIsDeleteMultipleDialogOpen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir Selecionados ({selectedTransactions.length})
+            </Button>
+          )}
+          <Button onClick={() => window.location.href = "/transactions/new"}>
+            <Plus className="mr-2 h-4 w-4" /> Nova transação
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4">
@@ -152,7 +193,15 @@ const Transactions = () => {
                   <table className="w-full">
                     <thead>
                       <tr className="text-left text-xs font-medium text-muted-foreground">
-                        <th className="pb-2 pl-2">Data</th>
+                        <th className="pb-2 pl-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedTransactions.length === filteredTransactions.length}
+                            onChange={toggleSelectAll}
+                            className="rounded border-gray-300"
+                          />
+                        </th>
+                        <th className="pb-2">Data</th>
                         <th className="pb-2">Descrição</th>
                         <th className="pb-2">Categoria</th>
                         <th className="pb-2">Conta/Cartão</th>
@@ -169,7 +218,15 @@ const Transactions = () => {
                         
                         return (
                           <tr key={transaction.id} className="hover:bg-secondary/50">
-                            <td className="py-3 pl-2 whitespace-nowrap">
+                            <td className="py-3 pl-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedTransactions.includes(transaction.id)}
+                                onChange={() => toggleTransactionSelection(transaction.id)}
+                                className="rounded border-gray-300"
+                              />
+                            </td>
+                            <td className="py-3 whitespace-nowrap">
                               {formatDate(new Date(transaction.date))}
                             </td>
                             <td className="py-3">
@@ -226,10 +283,17 @@ const Transactions = () => {
                             <td className="py-3 text-right pr-2">
                               <Button
                                 variant="ghost"
-                                size="icon"
+                                size="sm"
                                 onClick={() => openDeleteDialog(transaction)}
                               >
                                 <Trash2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => window.location.href = `/edit-transaction/${transaction.id}`}
+                              >
+                                <Pencil className="h-4 w-4" />
                               </Button>
                             </td>
                           </tr>
@@ -239,9 +303,9 @@ const Transactions = () => {
                   </table>
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Nenhuma transação encontrada com os filtros selecionados
-                </div>
+                <p className="text-center text-muted-foreground py-4">
+                  Nenhuma transação encontrada
+                </p>
               )}
             </CardContent>
           </Card>
@@ -377,6 +441,26 @@ const Transactions = () => {
             </Button>
             <Button variant="destructive" onClick={handleDeleteTransaction}>
               Excluir transação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Multiple Transactions Dialog */}
+      <Dialog open={isDeleteMultipleDialogOpen} onOpenChange={setIsDeleteMultipleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir transações selecionadas</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir {selectedTransactions.length} transações? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteMultipleDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteMultipleTransactions}>
+              Excluir transações
             </Button>
           </DialogFooter>
         </DialogContent>
