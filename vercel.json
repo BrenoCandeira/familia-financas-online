@@ -1,13 +1,15 @@
 {
-  "buildCommand": "npm install && npm run build",
-  "installCommand": "npm install",
+  "version": 2,
+  "buildCommand": "npm install --force && npm run build",
+  "installCommand": "npm install --force",
   "framework": "vite",
   "builds": [
     {
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "dist"
+        "distDir": "dist",
+        "buildCommand": "npm run build"
       }
     }
   ]
