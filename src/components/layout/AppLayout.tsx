@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -45,7 +44,12 @@ const AppLayout = () => {
 
   const Sidebar = () => (
     <div className="flex flex-col h-full">
-      <div className="px-4 py-6">
+      <div className="px-4 py-6 flex flex-col items-center">
+        <img
+          src="/20250512_0813_Ícone do App Finanças_simple_compose_01jv233q59fcjav7bnxew07ada.png"
+          alt="Ícone do App Finanças Família"
+          className="h-14 w-14 mb-2 rounded-xl shadow-md"
+        />
         <h2 className="text-xl font-semibold flex items-center">
           <span className="text-primary">Família</span>
           <span className="text-accent">Finanças</span>

@@ -106,6 +106,13 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
+          <div className="flex justify-center mb-4">
+            <img
+              src="/20250512_0813_Ícone do App Finanças_simple_compose_01jv233q59fcjav7bnxew07ada.png"
+              alt="Ícone do App Finanças Família"
+              className="h-20 w-20 rounded-xl shadow-md"
+            />
+          </div>
           <CardTitle className="text-2xl font-bold text-center">Finanças Família</CardTitle>
           <CardDescription className="text-center">
             Gerencie as finanças da sua família de forma simples e eficiente
